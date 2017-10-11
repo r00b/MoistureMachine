@@ -6,7 +6,7 @@
 #define soilPin   A0       // soil moisture sensor data pin
 #define soilPower D7       // soil moisture sensor power pin
 // #define DELAY     3600000  // 1 hour delay
-#define DELAY     5000    // 5 second delay
+#define DELAY     5000     // 5 second delay
 
 // temp sensor defs
 #define RHT03_DATA_PIN  D3   // RHT03 data pin
@@ -14,7 +14,6 @@
 RHT03 rht;
 
 // OLED defs
-
 #define PIN_RESET D6  // RST to pin 6
 #define PIN_DC    D5  // DC to pin 5 (required for SPI)
 #define PIN_CS    A2  // CS to pin A2 (required for SPI)
@@ -29,26 +28,32 @@ char auth[] = "38916c7587c246d287037e389a7fa085";
 
 #define THRESHOLD 50  // saturation warning level
 
-int percentage = 0;
-int runs = 0;
+int satPercentage = 0;
+int run = 0;
 
-String res = "";
+String moistureReport = "";
 
 void setup() {
   oled.begin();
+
   Serial.begin(9600); // open serial over USB
-  pinMode(soilPower, OUTPUT);   //Set D7 as an power OUTPUT
-  digitalWrite(soilPower, LOW); //Set to LOW so no power is flowing through the sensor
+
+  pinMode(soilPower, OUTPUT);   // set D7 as an power OUTPUT
+  digitalWrite(soilPower, LOW); // set to LOW so no power is flowing through the sensor
 
   rht.begin(RHT03_DATA_PIN); // init temp sensor
+
   // pinMode(LIGHT_PIN, INPUT); // Set the photocell pin as an INPUT.
 
   // set up communication with other Photon
   Particle.subscribe("rob-camila", externalAlert);
+
   Blynk.begin(auth); // initiate Blynk library
 }
 
 void loop() {
+  delay(DELAY);
+
   Blynk.run();
 
   int tempF = readRHT(1);
@@ -58,22 +63,26 @@ void loop() {
 
   Blynk.virtualWrite(V0, tempF);
   Blynk.virtualWrite(V1, humidity);
-  Blynk.virtualWrite(V2, percentage);
+  Blynk.virtualWrite(V2, satPercentage);
 
-  runs++;
-  Particle.publish("rob-camila", "hour");
-  if (runs <= 4) {
-    String runPrefix = String("<string>RUN ") + String(runs) + String(": </strong>");
+  run++;
+
+  Particle.publish("rob-camila", "hour"); // trigger camila event
+
+  if (run <= 4) {
+    // build data report for this run
+    String runPrefix = String("<string>RUN ") + String(run) + String(": </strong>");
     String sat = String("Sat ") + String(saturation) + "% / ";
     String temp = String("Temp ") + String(tempF) + String("°F / ");
     String humid = String("Humid ") + String(humidity) + String("%<br>");
     // String lit = String("Light ") + String(light) + String("<br>");
 
-    res = res + runPrefix + sat + temp + humid;
+    moistureReport = moistureReport + runPrefix + sat + temp + humid;
   } else {
-    Particle.publish("DATA_REPORT", res);
-    res = "";
-    runs = 0;
+    // publish and reset data report
+    Particle.publish("DATA_REPORT", moistureReport);
+    moistureReport = "";
+    run = 0;
   }
 }
 
@@ -104,10 +113,9 @@ int readSaturation() {
   int rawReading = readSoil();
   // Serial.println(rawReading);
   // put it on a calibrated scale
-  percentage = scaleReading(rawReading);
-// Reading 0: 88% saturation, 75F,
+  satPercentage = scaleReading(rawReading);
   // trigger low moisture event if necessary
-  if (percentage < THRESHOLD) {
+  if (satPercentage < THRESHOLD) {
     Particle.publish("MOISTURE", "LOW");
   }
 
@@ -116,16 +124,15 @@ int readSaturation() {
   oled.setFontType(0);
   renderString(0, 10, "Saturation is");
   oled.setFontType(2);
-  renderString(0, 30, String(percentage));
+  renderString(0, 30, String(satPercentage));
   oled.setFontType(0);
-  if (percentage < 100) {
+  if (satPercentage < 100) {
     renderString(25, 30,"%");
   } else {
     renderString(35, 30,"%");
   }
   oled.display();
-  delay(DELAY);
-  return percentage;
+  return satPercentage;
 }
 
 void renderString(int x, int y, String string)
@@ -135,19 +142,20 @@ void renderString(int x, int y, String string)
 }
 
 int readSoil() {
-  digitalWrite(soilPower, HIGH);  // turn on sensor
+  digitalWrite(soilPower, HIGH);     // turn on sensor
   delay(10);
-  int reading = analogRead(soilPin);      // read the SIG value from sensor
-  digitalWrite(soilPower, LOW);   // turn off sensor
+  int reading = analogRead(soilPin); // read the SIG value from sensor
+  digitalWrite(soilPower, LOW);      // turn off sensor
   return reading;
 }
 
 int scaleReading(int rawReading) {
   int baseline = 2200;
+  int max = 3300;
   if (rawReading < baseline) {
     return 0;
   }
-  return (int)((rawReading - baseline) * ((float)100 / (float)1100));
+  return (int)((rawReading - baseline) * ((float)100 / (float)(max - baseline)));
 }
 
 void externalAlert(const char *event, const char *data) {

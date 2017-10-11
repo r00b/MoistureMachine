@@ -71,7 +71,7 @@ void loop() {
 
   if (run <= 4) {
     // build data report for this run
-    String runPrefix = String("<string>RUN ") + String(run) + String(": </strong>");
+    String runPrefix = String("<strong>RUN ") + String(run) + String(": </strong>");
     String sat = String("Sat ") + String(saturation) + "% / ";
     String temp = String("Temp ") + String(tempF) + String("°F / ");
     String humid = String("Humid ") + String(humidity) + String("%<br>");

@@ -1,5 +1,3 @@
-NOTE: GitHub does not support photo EXIF data in Markdown, so some images are rotated. I have been unable to find a fix for this.
-
 ## MoistureMachine
 
 ### Conceptual Description
@@ -31,7 +29,7 @@ I wanted the rest of the enclosure to protect the microcontroller from the exter
 
 ![Enclosure with electronics exposed](images/device.jpg)
 
-![Enclosure with electronics exposed](images/device2.jpg)
+![Enclosure with electronics exposed](images/device2.png)
 
 **Low Moisture Notification**
 
